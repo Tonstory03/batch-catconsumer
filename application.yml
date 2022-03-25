@@ -1,0 +1,43 @@
+application:
+  name: batch-catconsumer
+  profile: dev
+
+server:
+  port: 8080
+
+cronjob: 
+  - name: "retry-process-kafka"
+    expression: "0 * * * *"
+    enable: true
+
+elastic:
+  endpoint: https://vip-itests.true.th:9200
+  enableAuth: true
+  username: int-dev
+  password: int-dev
+
+
+service:
+  - name: "upsertPrepaidCatalogue"
+    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/upsertprepaidcatalogue"
+    system: "INTX"
+    user: "ITSD_INTX"
+    password: "INTXOPER1"
+    connectionTimeout: 10000
+    readTimeout: 10000
+
+  - name: "updatePrepaidCatalogue"
+    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/updateprepaidcatalogue"
+    system: "INTX"
+    user: "ITSD_INTX"
+    password: "INTXOPER1"
+    connectionTimeout: 10000
+    readTimeout: 10000
+
+  - name: "removePrepaidCatalogue"
+    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/removeprepaidcatalogue"
+    system: "INTX"
+    user: "ITSD_INTX"
+    password: "INTXOPER1"
+    connectionTimeout: 10000
+    readTimeout: 10000
