@@ -1,6 +1,11 @@
 package elasticclient
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"th.truecorp.it.dsm.batch/batch-catconsumer/utils"
+)
 
 func getSearchBodyRetryProcess(env, startTime, endTime string, result SearchRequest) (map[string]interface{}, error) {
 
@@ -70,4 +75,29 @@ func GetSearchBodyRetryProcessPaging(env, startTime, endTime string, from, size 
 
 func getTopic(env string) string {
 	return fmt.Sprintf("%s-cat-offer", env)
+}
+
+func getQuery(query, sort, from, size *interface{}) string {
+
+	listKV := []KV{
+		KV{Key: "query", Value: utils.ToJsonText(query)},
+		KV{Key: "sort", Value: utils.ToJsonText(sort)},
+		KV{Key: "from", Value: utils.ToJsonText(from)},
+		KV{Key: "size", Value: utils.ToJsonText(size)},
+	}
+
+	return fmt.Sprintf(`{%s}`, convertKV2String(listKV))
+}
+
+func convertKV2String(keyValues []KV) string {
+
+	var arr []string = make([]string, 0)
+
+	for _, keyValue := range keyValues {
+		if v := keyValue.Convert2String(); v != nil {
+			arr = append(arr, *v)
+		}
+	}
+
+	return strings.Join(arr, ",")
 }

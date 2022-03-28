@@ -1,6 +1,9 @@
 package elasticclient
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type ResultSearch struct {
 	Took     int        `json:"took"`
@@ -49,4 +52,20 @@ func (e *SearchRequest) Convert2Map() (map[string]interface{}, error) {
 	json.Unmarshal(data, &result)
 
 	return result, nil
+}
+
+type KV struct {
+	Key   string
+	Value *string
+}
+
+func (v *KV) Convert2String() *string {
+	var result *string
+
+	if v.Value != nil {
+		s := fmt.Sprintf(`%s:%s`, v.Key, *v.Value)
+		result = &s
+	}
+
+	return result
 }
