@@ -36,13 +36,9 @@ func retryProcessKafka() {
 	}
 
 	if resultQueryFailure.Hits.Total.Value == 0 {
-		fmt.Println("No process failure ", resultQueryFailure.Hits.Total.Value)
+		// fmt.Println("No process failure ", resultQueryFailure.Hits.Total.Value)
 		return
 	}
-
-	fmt.Println("Start process ", resultQueryFailure.Hits.Total.Value)
-
-	// DataSources := make([]elasticclient.DataSource, 0)
 
 	for _, dataHits := range resultQueryFailure.Hits.Hits {
 
@@ -52,19 +48,14 @@ func retryProcessKafka() {
 			kafkaTimestamp = dataHits.Source.KafkaTimestamp
 			action         = dataHits.Source.Action
 			message        = dataHits.Source.Message
-			uuidVal        = uuid.New().string()
+			uuidVal        = uuid.New().String()
 		)
-
-		// if strings.EqualFold(action, elasticclient.ACTION_VERSION_EXP) {
-		// 	// call service
-		// 	continue
-		// }
 
 		if utils.IsEmptyString(offerCode) || utils.IsEmptyString(offerName) {
 			continue
 		}
 
-		fmt.Println("Start process ", *offerCode, *offerName, action)
+		// fmt.Println("Start process ", *offerCode, *offerName, action)
 
 		resultQueryByCodeName, err := searchProcessByCodeName(es, profile, *offerCode, *offerName, kafkaTimestamp)
 
@@ -84,18 +75,16 @@ func retryProcessKafka() {
 
 		if caseRetryProcess {
 			// call retry process
-			fmt.Println("code:", *offerCode, ", name: ", *offerName, " is going to retry process.")
+			// fmt.Println("code:", *offerCode, ", name: ", *offerName, " is going to retry process.")
 
-			result, err := callService(message, action, "", uuidVal, kafkaTimestamp)
+			_, err := callService(message, action, "", uuidVal, kafkaTimestamp)
 
 			if err != nil {
 				fmt.Println("Error call service", err)
 			}
 
-			fmt.Println("Result retry process :", result)
-
 		} else {
-			fmt.Println("code:", *offerCode, ", name: ", *offerName, " won't retry process.")
+			// fmt.Println("code:", *offerCode, ", name: ", *offerName, " won't retry process.")
 		}
 	}
 
@@ -280,9 +269,9 @@ func searchProcessFailure(es *elasticsearch.Client, env string) (*elasticclient.
 		rangeTimestamp = getRangeTimestamp(lastCheckPoint)
 	)
 
-	fmt.Println(rangeTimestamp)
-	// fix test
-	rangeTimestamp = elasticclient.SearchRangeTimestamp{StartTime: "2022-03-25T00:00:00Z", EndTime: "2022-03-25T14:22:29Z"}
+	// fmt.Println(rangeTimestamp)
+	// // fix test
+	// rangeTimestamp = elasticclient.SearchRangeTimestamp{StartTime: "2022-03-25T00:00:00Z", EndTime: "2022-03-25T14:22:29Z"}
 
 	query, err := getSearchBodyProcessFailure(env, rangeTimestamp, &elasticclient.SearchPaging{From: from, Size: size})
 
