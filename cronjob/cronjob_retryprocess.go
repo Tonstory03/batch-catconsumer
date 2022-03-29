@@ -2,6 +2,7 @@ package cronjob
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -9,9 +10,13 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/google/uuid"
 	"th.truecorp.it.dsm.batch/batch-catconsumer/config"
 	"th.truecorp.it.dsm.batch/batch-catconsumer/elasticclient"
+	"th.truecorp.it.dsm.batch/batch-catconsumer/service"
 	"th.truecorp.it.dsm.batch/batch-catconsumer/utils"
+
+	"th.truecorp.it.dsm.batch/batch-catconsumer/errorutils"
 )
 
 func retryProcessKafka() {
@@ -47,6 +52,7 @@ func retryProcessKafka() {
 			kafkaTimestamp = dataHits.Source.KafkaTimestamp
 			action         = dataHits.Source.Action
 			message        = dataHits.Source.Message
+			uuidVal        = uuid.New().string()
 		)
 
 		// if strings.EqualFold(action, elasticclient.ACTION_VERSION_EXP) {
@@ -72,18 +78,126 @@ func retryProcessKafka() {
 			caseRetryProcess, err = checkCaseRetryProcess(action, message, resultQueryByCodeName.Hits.Hits)
 			if err != nil {
 				fmt.Println("Error ", err.Error())
-				continue
+				// continue
 			}
 		}
 
 		if caseRetryProcess {
 			// call retry process
 			fmt.Println("code:", *offerCode, ", name: ", *offerName, " is going to retry process.")
+
+			result, err := callService(message, action, "", uuidVal, kafkaTimestamp)
+
+			if err != nil {
+				fmt.Println("Error call service", err)
+			}
+
+			fmt.Println("Result retry process :", result)
+
 		} else {
 			fmt.Println("code:", *offerCode, ", name: ", *offerName, " won't retry process.")
 		}
 	}
 
+}
+
+func callService(msgValue, action, correlatedId, uuidVal string, kafkaTimestamp int64) (bool, error) {
+
+	var serviceName string
+
+	switch a := action; {
+	case strings.EqualFold(a, HEADER_OFFER_ACTION_VERSION_EXP):
+		serviceName = service.SERVICE_UPDATE_PREPAID_CATALOGUE
+
+	case strings.EqualFold(a, HEADER_OFFER_ACTION_UPSERT):
+		serviceName = service.SERVICE_UPSERT_PREPAID_CATALOGUE
+
+	case strings.EqualFold(a, HEADER_OFFER_ACTION_DELETE):
+		serviceName = service.SERVICE_REMOVE_PREPAID_CATALOGUE
+
+	case strings.EqualFold(a, HEADER_OFFER_ACTION_FETCHALL):
+		serviceName = service.SERVICE_UPSERT_PREPAID_CATALOGUE
+	default:
+		return false, errors.New(fmt.Sprintf("Error header action: {%s} doesn't match in any case", action))
+	}
+
+	resultService, errGetService := getService(msgValue, serviceName, correlatedId, uuidVal, kafkaTimestamp)
+
+	if errGetService != nil {
+		return false, errors.New(fmt.Sprintf("Error getService: %s", errGetService))
+	}
+
+	return doService(resultService)
+}
+
+func doService(iService service.IService) (bool, error) {
+
+	var resp service.ResponsePrepaidCatalogue
+
+	respBytes, response, errorService := service.DoService(iService)
+
+	if errorService != nil {
+		return true, errors.New(fmt.Sprintf("Error DoService: %s", errorService))
+	}
+
+	errUnmarshal := json.Unmarshal(respBytes, &resp)
+
+	if errUnmarshal != nil {
+		return true, errors.New(fmt.Sprintf("Error Unmarshal body: %s", errUnmarshal))
+	}
+
+	if resp.ErrorCode == errorutils.ERR_CD_INTERNAL_FAILURE {
+		return true, errors.New(fmt.Sprintf("Error response body errorCode: %s", errorutils.ERR_CD_INTERNAL_FAILURE))
+	}
+
+	if response.StatusCode == 400 || resp.ErrorCode == errorutils.ERR_CD_REQUIRED_FIELD {
+		return false, errors.New(fmt.Sprintf("Error Bad request : %s", resp.Message))
+	}
+
+	return false, nil
+}
+
+func getService(msgValue, serviceName, correlatedId, uuidVal string, kafkaTimestamp int64) (service.IService, error) {
+
+	var msgData map[string]interface{}
+
+	var result service.IService
+
+	err := json.Unmarshal([]byte(msgValue), &msgData)
+
+	if err != nil {
+		return nil, err
+	}
+
+	request := service.RequestPrepaidCatalogue{
+		CorrelatedId:   correlatedId,
+		CallerUuid:     uuidVal,
+		Data:           msgData,
+		KafkaTimestamp: kafkaTimestamp,
+	}
+
+	msgBytes, err := json.Marshal(request)
+
+	if err != nil {
+		return nil, err
+	}
+
+	switch serviceName {
+
+	case service.SERVICE_UPSERT_PREPAID_CATALOGUE:
+		result = service.NewUpsertPrepaidCatalogueService(string(msgBytes), correlatedId, uuidVal, nil)
+
+	case service.SERVICE_UPDATE_PREPAID_CATALOGUE:
+		result = service.NewUpdatePrepaidCatalogueService(string(msgBytes), correlatedId, uuidVal, nil)
+
+	case service.SERVICE_REMOVE_PREPAID_CATALOGUE:
+		result = service.NewRemovePrepaidCatalogueService(string(msgBytes), correlatedId, uuidVal, nil)
+
+	default:
+		return nil, errors.New(fmt.Sprintf("Error Service name: {%s} doesn't support.", serviceName))
+	}
+
+	return result, nil
 }
 
 func checkCaseRetryProcess(action, message string, dataHits []elasticclient.DataHits) (bool, error) {
