@@ -10,6 +10,9 @@ func main() {
 	// loading config.
 	config.LoadingConfig()
 
+	// //	Start server
+	// apirouter.SetupAPIRouter()
+
 	// start cronjob
 	cronjob.Init()
 }

@@ -1,81 +1,55 @@
 package elasticclient
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/elastic/go-elasticsearch/v7"
 	"th.truecorp.it.dsm.batch/batch-catconsumer/utils"
 )
 
-func getSearchBodyRetryProcess(env, startTime, endTime string, result SearchRequest) (map[string]interface{}, error) {
+func Search(es *elasticsearch.Client, body map[string]interface{}) (*ResultSearch, error) {
 
-	// sort by kafka timestamp
-	sortMap := map[string]string{
-		"kafkaTimestamp": "asc",
+	var result ResultSearch
+	var buffer bytes.Buffer
+
+	json.NewEncoder(&buffer).Encode(body)
+	response, err := es.Search(es.Search.WithBody(&buffer))
+
+	if err != nil {
+		return nil, err
 	}
 
-	mustMap := []map[string]interface{}{
+	json.NewDecoder(response.Body).Decode(&result)
 
-		// query eq topic.
-		map[string]interface{}{
-			"term": map[string]string{
-				"topic.keyword": getTopic(env),
-			},
-		},
-
-		// query range timestamp.
-		map[string]interface{}{
-			"range": map[string]interface{}{
-				"timestamp": map[string]string{
-					"gte": startTime,
-					"lt":  endTime,
-				},
-			},
-		},
-
-		// query exist field action.
-		map[string]interface{}{
-			"exists": map[string]string{
-				"field": "action",
-			},
-		},
-	}
-
-	mustNotMap := []map[string]interface{}{
-		map[string]interface{}{
-			"term": map[string]string{
-				"action.keyword": "fetchAll",
-			},
-		},
-	}
-
-	boolMap := map[string]interface{}{
-		"must":     mustMap,
-		"must_not": mustNotMap,
-	}
-
-	result.Query = map[string]interface{}{
-		"bool": boolMap,
-	}
-
-	result.Sort = sortMap
-
-	return result.Convert2Map()
+	return &result, nil
 }
 
-func GetSearchBodyRetryProcess(env, startTime, endTime string) (map[string]interface{}, error) {
+// func getSearchBodyProcessFailure(env, startTime, endTime string) (map[string]interface{}, error) {
 
-	return getSearchBodyRetryProcess(env, startTime, endTime, SearchRequest{})
-}
+// 	return getSearchBodyRetryProcess(env, startTime, endTime, nil)
+// }
 
-func GetSearchBodyRetryProcessPaging(env, startTime, endTime string, from, size int) (map[string]interface{}, error) {
+// func getSearchBodyProcessFailurePaging(env, startTime, endTime string, from, size int) (map[string]interface{}, error) {
 
-	return getSearchBodyRetryProcess(env, startTime, endTime, SearchRequest{From: &from, Size: &size})
-}
+// 	return getSearchBodyRetryProcess(env, startTime, endTime, &SearchPaging{From: &from, Size: &size})
+// }
 
-func getTopic(env string) string {
-	return fmt.Sprintf("%s-cat-offer", env)
-}
+// func GetSearchBodyProcessFailure(env, startTime, endTime string, from, size int) (map[string]interface{}, error) {
+
+// 	return getSearchBodyRetryProcess(env, startTime, endTime, SearchRequest{From: &from, Size: &size})
+// }
+
+// func getSearchBodyProcessFailure(env, startTime, endTime string, result SearchRequest) (map[string]interface{}, error) {
+// 	var query interface{} = fmt.Sprintf(QUERY_BODY_PROCESS_FAILURE, getTopic(env), startTime, endTime)
+// 	var sort interface{} = `{"kafkaTimestamp": "asc"}`
+// 	var from interface{} = 0
+// 	var size interface{} = 9999
+// 	qs := getQuery(&query, &sort, &from, &size)
+
+// }
 
 func getQuery(query, sort, from, size *interface{}) string {
 

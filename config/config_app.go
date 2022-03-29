@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/viper"
@@ -20,14 +21,17 @@ func LoadingConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		getDefaultConfigYML()
-		return
+	} else {
+		err := viper.Unmarshal(&AppConfig)
+
+		if err != nil {
+			getDefaultConfigYML()
+		}
 	}
 
-	err := viper.Unmarshal(&AppConfig)
+	loadingServiceConfig()
 
-	if err != nil {
-		getDefaultConfigYML()
-	}
+	fmt.Println("Load config success profile:", GetApplication().Profile)
 
 }
 

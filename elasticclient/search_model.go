@@ -26,10 +26,12 @@ type DataHits struct {
 }
 
 type DataSource struct {
-	Action         string `json:"Action"`
-	KafkaTimestamp int64  `json:"kafkaTimestamp"`
-	Message        string `json:"message"`
-	IsRetryMessage bool   `json:"isRetryMessage"`
+	Action         string  `json:"action"`
+	OfferCode      *string `json:"offerCode"`
+	OfferName      *string `json:"offerName"`
+	KafkaTimestamp int64   `json:"kafkaTimestamp"`
+	Message        string  `json:"message"`
+	IsRetryMessage bool    `json:"isRetryMessage"`
 	// Log            string `json:"log"`
 }
 
@@ -38,6 +40,21 @@ type SearchRequest struct {
 	From  *int                   `json:"from,omitempty"`
 	Size  *int                   `json:"size,omitempty"`
 	Query map[string]interface{} `json:"query,omitempty"`
+}
+
+type SearchRange struct {
+	StartTime string
+	EndTime   string
+}
+
+type SearchPaging struct {
+	From *int
+	Size *int
+}
+
+type SearchRangeTimestamp struct {
+	StartTime string
+	EndTime   string
 }
 
 func (e *SearchRequest) Convert2Map() (map[string]interface{}, error) {

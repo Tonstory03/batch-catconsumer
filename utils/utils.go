@@ -11,6 +11,7 @@ func GetBasicAuth(username, password string) string {
 
 	return fmt.Sprintf("Basic %s", Base64Encode(userPassPreEncode))
 }
+
 func ToJsonText(d *interface{}) *string {
 	var result *string
 
