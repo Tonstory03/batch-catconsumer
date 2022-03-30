@@ -19,7 +19,25 @@ import (
 	"th.truecorp.it.dsm.batch/batch-catconsumer/errorutils"
 )
 
+var isRetryProcessKafkaRunning = false
+
 func retryProcessKafka() {
+
+	if isRetryProcessKafkaRunning {
+		return
+	}
+
+	now := time.Now()
+
+	minute := int(math.Floor(float64(now.Minute()/30)) * 30)
+
+	lastTimeCommitProcess := utils.Time2StrFormatISO8601Timezone(time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), minute, 0, 0, time.Local))
+
+	uuidVal := uuid.New().String()
+
+	isRetryProcessKafkaRunning = true
+
+	fmt.Println("Start retry process kafka ", time.Now())
 
 	es, err := elasticclient.NewClient()
 
@@ -29,16 +47,23 @@ func retryProcessKafka() {
 
 	profile := config.GetApplication().Profile
 
-	resultQueryFailure, err := searchProcessFailure(es, profile)
+	resultQueryFailure, err := searchProcessFailure(es, profile, uuidVal)
 
 	if err != nil {
+		isRetryProcessKafkaRunning = false
 		panic(err)
 	}
 
+	fmt.Println("Process failure ", resultQueryFailure.Hits.Total.Value)
+
 	if resultQueryFailure.Hits.Total.Value == 0 {
-		// fmt.Println("No process failure ", resultQueryFailure.Hits.Total.Value)
+		// commit last time process.
+		commitTimeProcess(lastTimeCommitProcess, uuidVal)
+		isRetryProcessKafkaRunning = false
 		return
 	}
+
+	countRetry := 0
 
 	for _, dataHits := range resultQueryFailure.Hits.Hits {
 
@@ -60,6 +85,7 @@ func retryProcessKafka() {
 		resultQueryByCodeName, err := searchProcessByCodeName(es, profile, *offerCode, *offerName, kafkaTimestamp)
 
 		if err != nil {
+			isRetryProcessKafkaRunning = false
 			panic(err)
 		}
 
@@ -82,12 +108,27 @@ func retryProcessKafka() {
 			if err != nil {
 				fmt.Println("Error call service", err)
 			}
-
+			countRetry++
 		} else {
 			// fmt.Println("code:", *offerCode, ", name: ", *offerName, " won't retry process.")
 		}
 	}
 
+	// commit last time process.
+	commitTimeProcess(lastTimeCommitProcess, uuidVal)
+
+	fmt.Println("Finish retry process count retry process:", countRetry, ", no retry :", (len(resultQueryFailure.Hits.Hits) - countRetry), " at ", time.Now())
+	isRetryProcessKafkaRunning = false
+}
+
+func commitTimeProcess(lastTimeCommitProcess, uuidVal string) {
+	requestBody := service.RequestUpsertRetryProcessInfo{
+		Data: service.DataRetryProcessInfo{
+			LastTimeCommitProcessStr: &lastTimeCommitProcess,
+		},
+	}
+
+	service.CallUpsertRetryProcessInfoService(requestBody, "", uuidVal, nil)
 }
 
 func callService(msgValue, action, correlatedId, uuidVal string, kafkaTimestamp int64) (bool, error) {
@@ -260,17 +301,22 @@ func checkCaseRetryProcess(action, message string, dataHits []elasticclient.Data
 	return result, nil
 }
 
-func searchProcessFailure(es *elasticsearch.Client, env string) (*elasticclient.ResultSearch, error) {
+func searchProcessFailure(es *elasticsearch.Client, env, uuidVal string) (*elasticclient.ResultSearch, error) {
 
 	var (
-		from           = utils.NewIntPointer(0)
-		size           = utils.NewIntPointer(9999)
-		lastCheckPoint = getLastCheckPoint()
-		rangeTimestamp = getRangeTimestamp(lastCheckPoint)
+		from = utils.NewIntPointer(0)
+		size = utils.NewIntPointer(9999)
 	)
 
-	// fmt.Println(rangeTimestamp)
-	// // fix test
+	lastCheckPoint, err := getLastCheckPoint(uuidVal)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rangeTimestamp := getRangeTimestamp(*lastCheckPoint)
+
+	// // hard value for unit test
 	// rangeTimestamp = elasticclient.SearchRangeTimestamp{StartTime: "2022-03-25T00:00:00Z", EndTime: "2022-03-25T14:22:29Z"}
 
 	query, err := getSearchBodyProcessFailure(env, rangeTimestamp, &elasticclient.SearchPaging{From: from, Size: size})
@@ -307,12 +353,37 @@ func getRangeTimestamp(lastCheckPoint time.Time) elasticclient.SearchRangeTimest
 	}
 }
 
-func getLastCheckPoint() time.Time {
-	now := time.Now()
+func getLastCheckPoint(uuidVal string) (*time.Time, error) {
 
-	minute := int(math.Floor(float64(now.Minute()/30)) * 30)
+	var t time.Time
+	var isInitialData bool = true
 
-	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), minute, 0, 0, time.Local).Add(-time.Minute * 30)
+	result, _, err := service.CallGetRetryProcessInfoService("", uuidVal, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if result.ErrorCode == errorutils.ERR_CD_SUCCESS && result.Data != nil && result.Data.LastTimeCommitProcessStr != nil {
+
+		t, err = utils.Str2TimeFormatISO8601Timezone(*result.Data.LastTimeCommitProcessStr)
+
+		if err == nil {
+			isInitialData = false
+		}
+	}
+
+	if isInitialData {
+		// initial data.
+		now := time.Now()
+
+		minute := int(math.Floor(float64(now.Minute()/30)) * 30)
+
+		t = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), minute, 0, 0, time.Local).Add(-time.Minute * 30)
+
+	}
+
+	return &t, nil
 }
 
 func getTopic(env string) string {

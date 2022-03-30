@@ -2,6 +2,7 @@ package service
 
 type StandardRequest struct {
 	CorrelatedId string `json:"correlatedId"`
+	CallerUuid   string `json:"calleruuid"`
 }
 
 type StandardResponse struct {
@@ -15,6 +16,24 @@ type RequestPrepaidCatalogue struct {
 	CallerUuid     string                 `json:"calleruuid"`
 	Data           map[string]interface{} `json:"data"`
 	KafkaTimestamp int64                  `json:kafkaTimestamp`
+}
+
+type RequestUpsertRetryProcessInfo struct {
+	StandardRequest
+	Data DataRetryProcessInfo `json:"data"`
+}
+
+type DataRetryProcessInfo struct {
+	LastTimeCommitProcessStr *string `json:"lastTimeCommitProcess"`
+}
+
+type ResponseGetRetryProcessInfo struct {
+	StandardResponse
+	Data *DataRetryProcessInfo `json:"data,omitempty"`
+}
+
+type ResponseUpsertRetryProcessInfo struct {
+	StandardResponse
 }
 
 type ResponsePrepaidCatalogue struct {

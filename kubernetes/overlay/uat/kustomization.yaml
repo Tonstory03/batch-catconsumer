@@ -1,0 +1,11 @@
+bases:
+# - alpha
+- dev
+- uat2
+- uat3
+# - uat4
+- uat5
+- uat7
+images:
+- name: ${image}
+  newTag: ${imageTag}

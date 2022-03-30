@@ -13,3 +13,7 @@ const SERVICE_UPSERT_PREPAID_CATALOGUE = "upsertPrepaidCatalogue"
 const SERVICE_UPDATE_PREPAID_CATALOGUE = "updatePrepaidCatalogue"
 
 const SERVICE_REMOVE_PREPAID_CATALOGUE = "removePrepaidCatalogue"
+
+const SERVICE_GET_RETRY_PROCESS_INFO = "getRetryProcessInfo"
+
+const SERVICE_UPSERT_RETRY_PROCESS_INFO = "upsertRetryProcessInfo"

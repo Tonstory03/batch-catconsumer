@@ -1,0 +1,7 @@
+bases:
+- ../../../base
+nameSuffix: -dev
+commonLabels:
+  app: deploy-prepaidcataloguebatch-dev
+patchesStrategicMerge:
+- patch.yaml

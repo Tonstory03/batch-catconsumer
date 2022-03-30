@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rdmutility-config
-  namespace: intatom
+  name: prepaidcataloguebatch-config
+  namespace: intbatchjob
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deploy-rdmutility
-  namespace: intatom
+  name: deploy-prepaidcataloguebatch
+  namespace: intbatchjob
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: deploy-rdmutility
+      app: deploy-prepaidcataloguebatch
       env: uat
       version: 1.0.0
   strategy:
@@ -24,12 +24,12 @@ spec:
   template:
     metadata:
       labels:
-        app: deploy-rdmutility
+        app: deploy-prepaidcataloguebatch
         env: uat
         version: 1.0.0
     spec:
       containers:
-      - name: containers-rdmutility
+      - name: containers-prepaidcataloguebatch
         image: ${image}
         imagePullPolicy: Always
         resources:
@@ -42,19 +42,10 @@ spec:
             ephemeral-storage: 32Mi
         ports:
         - containerPort: 8080
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /index.html
-            port: 8080
-            scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
         livenessProbe:
           failureThreshold: 3
           httpGet:
-            path: /index.html
+            path: /ping
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 60
@@ -63,48 +54,14 @@ spec:
           timeoutSeconds: 5
         envFrom:
         - configMapRef:
-            name: rdmutility-config
+            name: prepaidcataloguebatch-config
         volumeMounts:
-          - name: rdmutility-config
+          - name: prepaidcataloguebatch-config
             mountPath: /app/configmap/
             readOnly: true
       volumes:
-        - name: rdmutility-config
+        - name: prepaidcataloguebatch-config
           configMap:
-            name: rdmutility-config
+            name: prepaidcataloguebatch-config
       imagePullSecrets:
       - name: intregcred
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: service-rdmutility
-  namespace: intatom
-  labels:
-    app: service-rdmutility
-    env: uat
-    version: 1.0.0
-spec:
-  ports:
-  - port: 80
-    targetPort: 8080
-  selector:
-    app: deploy-rdmutility
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: api-rdmutility
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-  namespace: intatom
-spec:
-  rules:
-  - host: aa.intatom.arctic.true.th
-    http:
-      paths:
-        - backend:
-            serviceName: service-rdmutility
-            servicePort: 80
-          path: /

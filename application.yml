@@ -7,7 +7,7 @@ server:
 
 cronjob: 
   - name: "retry-process-kafka"
-    expression: "0 * * * *"
+    expression: "0,30 * * * *"
     enable: true
 
 elastic:
@@ -19,25 +19,41 @@ elastic:
 
 service:
   - name: "upsertPrepaidCatalogue"
-    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/upsertprepaidcatalogue"
+    endpoint: "https://intxgw-dev.true.th/rdmutility/prepaidcatalogue/upsertprepaidcatalogue"
     system: "INTX"
     user: "ITSD_INTX"
     password: "INTXOPER1"
-    connectionTimeout: 10000
+    connectionTimeout: 5000
     readTimeout: 10000
 
   - name: "updatePrepaidCatalogue"
-    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/updateprepaidcatalogue"
+    endpoint: "https://intxgw-dev.true.th/rdmutility/prepaidcatalogue/updateprepaidcatalogue"
     system: "INTX"
     user: "ITSD_INTX"
     password: "INTXOPER1"
-    connectionTimeout: 10000
+    connectionTimeout: 5000
     readTimeout: 10000
 
   - name: "removePrepaidCatalogue"
-    endpoint: "http://api-rdmutility-dev.intatom.arctic.true.th/prepaidcatalogue/removeprepaidcatalogue"
+    endpoint: "https://intxgw-dev.true.th/rdmutility/prepaidcatalogue/removeprepaidcatalogue"
     system: "INTX"
     user: "ITSD_INTX"
     password: "INTXOPER1"
-    connectionTimeout: 10000
+    connectionTimeout: 5000
+    readTimeout: 10000
+
+  - name: "getRetryProcessInfo"
+    endpoint: "https://intxgw-dev.true.th/rdmutility/retryprocessinfo/getretryprocessinfo"
+    system: "INTX"
+    user: "ITSD_INTX"
+    password: "INTXOPER1"
+    connectionTimeout: 5000
+    readTimeout: 10000
+
+  - name: "upsertRetryProcessInfo"
+    endpoint: "https://intxgw-dev.true.th/rdmutility/retryprocessinfo/upsertretryprocessinfo"
+    system: "INTX"
+    user: "ITSD_INTX"
+    password: "INTXOPER1"
+    connectionTimeout: 5000
     readTimeout: 10000

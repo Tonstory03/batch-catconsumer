@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-prepaidcataloguebatch
+  namespace: intbatchjob
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deploy-prepaidcataloguebatch
+      env: uat4
+      version: 1.0.0
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%   
+  template:
+    metadata:
+      labels:
+        app: deploy-prepaidcataloguebatch
+        env: uat4
+        version: 1.0.0
+    spec:
+      containers:
+      - name: containers-prepaidcataloguebatch
+        env:
+        - name: env
+          value: uat4
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prepaidcataloguebatch-config
+  namespace: intbatchjob
+data:
+  application.yml: |-
+    application:
+      name: prepaidcatalogue-batch
+      profile: uat4
+
+    server:
+      port: 8080
+
+    cronjob: 
+      - name: "retry-process-kafka"
+        expression: "0,30 * * * *"
+        enable: true
+
+    elastic:
+      endpoint: https://vip-itests.true.th:9200
+      enableAuth: true
+      username: int-dev
+      password: int-dev
+
+
+    service:
+      - name: "upsertPrepaidCatalogue"
+        endpoint: "https://intxgw-uat4.true.th/rdmutility/prepaidcatalogue/upsertprepaidcatalogue"
+        system: "INTX"
+        user: "ITSD_INTX"
+        password: "INTXOPER1"
+        connectionTimeout: 5000
+        readTimeout: 10000
+
+      - name: "updatePrepaidCatalogue"
+        endpoint: "https://intxgw-uat4.true.th/rdmutility/prepaidcatalogue/updateprepaidcatalogue"
+        system: "INTX"
+        user: "ITSD_INTX"
+        password: "INTXOPER1"
+        connectionTimeout: 5000
+        readTimeout: 10000
+
+      - name: "removePrepaidCatalogue"
+        endpoint: "https://intxgw-uat4.true.th/rdmutility/prepaidcatalogue/removeprepaidcatalogue"
+        system: "INTX"
+        user: "ITSD_INTX"
+        password: "INTXOPER1"
+        connectionTimeout: 5000
+        readTimeout: 10000
+
+      - name: "getRetryProcessInfo"
+        endpoint: "https://intxgw-uat4.true.th/rdmutility/retryprocessinfo/getretryprocessinfo"
+        system: "INTX"
+        user: "ITSD_INTX"
+        password: "INTXOPER1"
+        connectionTimeout: 5000
+        readTimeout: 10000
+
+      - name: "upsertRetryProcessInfo"
+        endpoint: "https://intxgw-uat4.true.th/rdmutility/retryprocessinfo/upsertretryprocessinfo"
+        system: "INTX"
+        user: "ITSD_INTX"
+        password: "INTXOPER1"
+        connectionTimeout: 5000
+        readTimeout: 10000

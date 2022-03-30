@@ -1,0 +1,7 @@
+bases:
+- ../../../base
+nameSuffix: -uat3
+commonLabels:
+  app: deploy-prepaidcataloguebatch-uat3
+patchesStrategicMerge:
+- patch.yaml

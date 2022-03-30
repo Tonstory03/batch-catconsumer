@@ -18,9 +18,8 @@ func Init() {
 
 		switch cronJob.Name {
 		case NAME_RETRY_PROCESS_KAFKA:
-			retryProcessKafka()
-			// c.AddFunc(cronJob.Expression, retryProcessKafka)
-			// startJob = true
+			c.AddFunc(cronJob.Expression, retryProcessKafka)
+			startJob = true
 
 		}
 

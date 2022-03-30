@@ -29,10 +29,8 @@ func SetupAPIRouter() {
 		Handler: router,
 	}
 
-	go func() {
-		// service connections
-		if err := srv.ListenAndServe(); err != nil {
-			panic(err)
-		}
-	}()
+	// service connections
+	if err := srv.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }
